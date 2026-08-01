@@ -1,0 +1,616 @@
+
+
+
+
+WIMSE Working Group                                             M. Reece
+Internet-Draft                                  TowerGuardian Consulting
+Intended status: Informational                              30 July 2026
+Expires: 31 January 2027
+
+
+Cross-Organizational Delegation for Workload and Agent Identity: Problem
+                       Statement and Requirements
+               draft-reece-wimse-cross-org-delegation-01
+
+Abstract
+
+   Autonomous software agents increasingly act on behalf of human
+   principals by invoking tools, services, and other agents, frequently
+   across organizational boundaries.  Existing workload and token-based
+   authorization mechanisms were designed for a single trust domain and
+   a small number of delegation hops.  They do not adequately express,
+   constrain, or verify authority that is delegated recursively among
+   agents and that crosses the boundary between independently
+   administered organizations.  This document describes the problem of
+   cross-organizational agent delegation, identifies the gaps in current
+   mechanisms, and enumerates requirements that any solution within the
+   scope of the Workload Identity in Multi-System Environments (WIMSE)
+   working group should satisfy.  It does not specify a solution.
+
+Note to the RFC Editor and Working Group
+
+   This note is to be removed before publishing as an RFC.
+
+   Informative references to agent-to-agent and tool-invocation
+   protocols, to workload identity credential formats, and to status-
+   list-based revocation will be added in a subsequent revision; they
+   are omitted here to keep the problem statement mechanism-neutral.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+
+
+Reece                    Expires 31 January 2027                [Page 1]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   This Internet-Draft will expire on 31 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Problem Statement . . . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Recursive Delegation Among Agents . . . . . . . . . . . .   4
+     3.2.  Crossing the Organizational Boundary  . . . . . . . . . .   4
+     3.3.  Verification Without a Runtime Callback . . . . . . . . .   5
+     3.4.  Binding the On-Behalf-Of Principal  . . . . . . . . . . .   5
+     3.5.  Revocation and Freshness Across Domains . . . . . . . . .   5
+     3.6.  Composable Cross-Domain Audit . . . . . . . . . . . . . .   6
+     3.7.  Execution-Time Human Authorization  . . . . . . . . . . .   6
+   4.  Gaps in Existing Mechanisms . . . . . . . . . . . . . . . . .   6
+   5.  Requirements  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   6.  Non-Goals . . . . . . . . . . . . . . . . . . . . . . . . . .   9
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  10
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  10
+   Appendix A.  Changes Since -00  . . . . . . . . . . . . . . . . .  11
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  11
+
+1.  Introduction
+
+   Software agents that incorporate large language models or other
+   autonomous decision logic are increasingly deployed to perform tasks
+   on behalf of human principals.  A common pattern is for an
+   orchestrating agent to decompose a task and delegate sub-tasks to
+   specialized sub-agents, each of which may invoke tools or further
+   sub-agents.  These tool and agent invocations are frequently mediated
+   by protocols such as the Model Context Protocol and agent-to-agent
+
+
+
+Reece                    Expires 31 January 2027                [Page 2]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   messaging, and they increasingly cross the boundary between
+   independently administered organizations: an agent operated by one
+   organization invokes a tool or agent operated by another.
+
+   The Workload Identity in Multi-System Environments (WIMSE) working
+   group is chartered to address identity for workloads that operate
+   across multiple systems and trust domains.  Autonomous agents are a
+   workload class whose delegation behavior stresses existing identity
+   and authorization mechanisms in ways that this document seeks to make
+   explicit.
+
+   The authorization question raised at each agent action is not a
+   single question but a composition of several: which workload is
+   acting; what authority it holds; from whom that authority was
+   delegated and through how many intermediaries; on behalf of which
+   human principal it ultimately acts; and whether a relying party in a
+   different organization can answer all of the foregoing without
+   contacting the originating organization at the moment of the call.
+
+   Existing mechanisms answer some of these questions within a single
+   trust domain.  This document argues that none answers all of them
+   across organizational boundaries, and that the gap is significant
+   enough to warrant work within the WIMSE working group.
+
+   This document is a problem statement and requirements document.  It
+   deliberately does not propose or endorse any specific mechanism,
+   credential format, or token construction.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   This document uses the following terms.
+
+   Agent:  A software workload that performs tasks autonomously,
+      potentially invoking tools, services, or other agents.  An agent
+      is a workload in the sense of the WIMSE architecture.
+
+   Tool:  A function, API, or service that an agent may invoke to take
+      an action or retrieve information.
+
+   Principal:  The human (or other ultimately-accountable entity) on
+      whose behalf an agent acts.
+
+
+
+
+Reece                    Expires 31 January 2027                [Page 3]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   Delegation:  The act of conferring a subset of one entity's authority
+      upon another entity.
+
+   Delegation chain:  An ordered sequence of delegations originating at
+      a principal or an originating agent and proceeding through zero or
+      more intermediary agents to the agent that performs an action.
+
+   Attenuation:  The narrowing of authority at a delegation step, such
+      that the authority conferred is no greater than the authority
+      held.
+
+   Originating organization:  The organization whose trust anchor issued
+      the identity or authority at the root of a delegation chain.
+
+   Relying party:  The entity that receives an agent's request and must
+      decide whether to honor it; in cross-organizational cases the
+      relying party belongs to a different organization than the
+      originating organization.
+
+3.  Problem Statement
+
+   This section describes seven facets of the cross-organizational agent
+   delegation problem.  They are interrelated; a solution that addresses
+   only a subset leaves exploitable or operationally untenable gaps.
+
+3.1.  Recursive Delegation Among Agents
+
+   An orchestrating agent commonly delegates a narrowed slice of its
+   authority to a sub-agent, which may delegate a further narrowed slice
+   to another sub-agent, and so on.  Each step SHOULD only be able to
+   narrow authority, never to widen it.  Existing bearer-token
+   mechanisms typically express a fixed set of scopes granted at issue
+   time and provide no native, verifiable model in which authority is
+   recursively attenuated across multiple hops while remaining
+   verifiable end-to-end.  Where multi-hop delegation is expressed at
+   all, the constraint that a later hop cannot exceed an earlier hop is
+   frequently enforced only by the issuing party's policy rather than
+   being verifiable by an arbitrary relying party from the conveyed
+   authority alone.
+
+3.2.  Crossing the Organizational Boundary
+
+   When an agent in organization A invokes a tool or agent in
+   organization B, organization B's relying party must evaluate
+   authority that was issued under organization A's trust anchor.  In
+   the general case there is no pre-existing bilateral agreement between
+   A and B specific to this interaction.  Mechanisms that assume a
+   shared identity provider, a shared policy store, or a pre-provisioned
+
+
+
+Reece                    Expires 31 January 2027                [Page 4]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   federation relationship do not generalize to the open, many-to-many
+   case in which agents from numerous organizations interact without
+   having been federated in advance.
+
+3.3.  Verification Without a Runtime Callback
+
+   Agent tool invocations can occur at high frequency and with stringent
+   latency budgets.  Requiring the relying party to call back to the
+   originating organization's infrastructure at the moment of each
+   invocation -- to introspect a token, resolve a session, or confirm
+   authority -- introduces latency, a runtime availability dependency on
+   a third party, and a privacy exposure (the originating organization
+   learns each time and where its agent's authority is exercised).  A
+   relying party SHOULD be able to reach a correct authorization
+   decision from the conveyed authority, locally cached trust material,
+   and locally cached revocation state, without a synchronous call to
+   the originating organization on the critical path.
+
+3.4.  Binding the On-Behalf-Of Principal
+
+   An agent typically acts on behalf of a human principal.  Two distinct
+   authorization questions arise at each action and are independent of
+   one another: whether the agent is permitted to perform the class of
+   action at all, and whether the human principal on whose behalf it
+   acts is entitled to the specific resource the action targets.  An
+   authorization model that captures only the first question permits a
+   "confused deputy", in which an agent authorized for a class of action
+   is induced to apply it to a resource belonging to some principal
+   other than the one it acts for.  A model that resolves the second
+   question by having the agent inherit the principal's full set of
+   permissions produces an over-privileged deputy, in which compromise
+   of the agent escalates to the full authority of the human.  Across a
+   multi-hop, cross-organizational delegation chain, the identity of the
+   on-behalf-of principal must be conveyed and constrained in a manner
+   that a remote relying party can evaluate, and that intermediary
+   agents cannot silently alter.
+
+3.5.  Revocation and Freshness Across Domains
+
+   Authority conferred on an agent must be revocable, and revocation
+   must reach relying parties in other organizations.  Because the
+   verification path SHOULD avoid a synchronous callback (Section 3.3),
+   revocation state must be conveyable to relying parties out of band
+   and checkable locally, while remaining authentic (a revoked authority
+   cannot be made to appear valid) and bounded in staleness (a relying
+   party can reason about, and fail safe on, the age of its revocation
+   information).  Reconciling offline verification with timely cross-
+   domain revocation is a central tension.
+
+
+
+Reece                    Expires 31 January 2027                [Page 5]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+3.6.  Composable Cross-Domain Audit
+
+   After the fact -- for incident response, compliance, or dispute
+   resolution -- it must be possible to reconstruct who authorized a
+   given action, through which intermediaries, and on behalf of which
+   principal, even though the relevant events were recorded by different
+   organizations.  No single organization observes the entire delegation
+   chain in a cross-organizational interaction.  The records held by
+   each participant must be composable into a coherent end-to-end
+   account, and each participant's record must be resistant to
+   undetectable alteration.
+
+3.7.  Execution-Time Human Authorization
+
+   Some classes of action are consequential enough that an
+   organization's policy requires a human decision at the moment of
+   execution, regardless of what standing authority the acting agent
+   otherwise holds: releasing a payment above a threshold, deleting or
+   exporting a data set, modifying a safety boundary, or triggering a
+   physical action in the world.  Within a single trust domain this is
+   commonly implemented as step-up authentication or an approval
+   workflow anchored at a shared authorization server.  Across a multi-
+   hop, cross-organizational delegation chain, three properties become
+   difficult to obtain at once: that the requirement itself survives
+   delegation, so that no intermediary can shed it; that the human's
+   decision is bound to the specific action being taken, rather than to
+   a session or to a class of actions; and that the relying party which
+   enforces the requirement, possibly offline and in another
+   organization, can verify the decision's evidence at the moment of
+   enforcement.
+
+   Public discussion has converged on this pattern from several
+   directions, including grant-time consent records and challenge-based
+   transaction-authorization proposals in the OAuth community, "user-
+   mediated escalation" in agent-authorization use-case work, and
+   "physical-world action authorization" requirements for embodied
+   agents.  These proposals differ in mechanism; they share the
+   underlying need this facet states.
+
+4.  Gaps in Existing Mechanisms
+
+   The following observations motivate work in this area.  They are
+   stated at the level of mechanism classes rather than specific
+   documents, to avoid mischaracterizing any individual specification.
+
+
+
+
+
+
+
+Reece                    Expires 31 January 2027                [Page 6]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   Session-oriented authorization frameworks excel at granting a client
+   scoped access within a trust domain but generally assume a small,
+   fixed delegation depth and a relying party that can reach the
+   authorization server.  Their extension to recursive agent delegation
+   across organizations is not native.
+
+   Token exchange mechanisms can express that one party acts on behalf
+   of or is impersonating another, but they do not provide a verifiable
+   model of recursive attenuation across an arbitrary number of hops,
+   nor a guarantee, checkable by an arbitrary relying party, that the
+   on-behalf-of principal is invariant along the chain.
+
+   Workload identity mechanisms establish strong identity for workloads
+   and increasingly span multiple systems, which is precisely the WIMSE
+   remit; the open question this document raises is how delegated,
+   attenuated, principal-bound authority is conveyed and verified when
+   the workloads in question are agents that delegate to one another
+   across organizational boundaries.
+
+   Mechanisms that rely on a shared policy decision point evaluate rich
+   policy at runtime but reintroduce a runtime dependency and a single
+   administrative domain, which is the dependency Section 3.3 seeks to
+   avoid in the cross-organizational case.
+
+   The cumulative gap is that no widely deployed mechanism today lets a
+   relying party in one organization verify, locally and without a
+   callback, a recursively attenuated, principal-bound delegation chain
+   that originated in another organization, while supporting cross-
+   domain revocation and composable audit.
+
+5.  Requirements
+
+   Any solution within scope SHOULD satisfy the following requirements.
+   They are derived directly from the problem facets in Section 3 and
+   are stated independently of any particular credential format or
+   cryptographic construction.
+
+   R1 (Recursive attenuation):  The mechanism MUST allow authority to be
+      delegated through multiple hops such that each hop conveys a
+      subset of the authority of the preceding hop, and MUST allow a
+      relying party to verify, from the conveyed authority alone, that
+      no hop exceeds its predecessor.
+
+   R2 (Cross-organizational verification):  A relying party in one
+      organization MUST be able to verify authority that originated
+      under another organization's trust anchor without a pre-existing
+      bilateral agreement specific to the interaction.
+
+
+
+
+Reece                    Expires 31 January 2027                [Page 7]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   R3 (No runtime callback):  The mechanism MUST permit a relying party
+      to reach an authorization decision without a synchronous call to
+      the originating organization on the critical path, using conveyed
+      authority and locally cached trust and revocation material.
+
+   R4 (Proof of possession):  The mechanism MUST allow a relying party
+      to confirm that the presenting party controls the key to which the
+      conveyed authority is bound, so that a captured or relayed
+      credential is not usable by another party.
+
+   R5 (Principal binding and invariance):  The mechanism MUST be able to
+      convey the on-behalf-of principal along the delegation chain and
+      MUST allow a relying party to verify that intermediary agents have
+      not altered the identity of that principal.
+
+   R6 (Dual-axis authorization):  The mechanism MUST support
+      authorization decisions that depend both on the agent's conveyed
+      authority and on the entitlements of the bound principal, such
+      that an action is permitted only when both admit it.
+
+   R7 (Authentic, bounded-staleness revocation):  The mechanism MUST
+      support revocation whose authenticity is verifiable offline and
+      whose staleness is bounded, so that a relying party can fail safe
+      when its revocation information is older than a configured bound.
+
+   R8 (Tamper-evident, composable audit):  The mechanism SHOULD enable
+      each participant to record its portion of a delegation in a manner
+      resistant to undetectable alteration, and SHOULD enable those
+      records to be composed into an end-to-end account of an action's
+      provenance.
+
+   R9 (Format and transport agnosticism):  The requirements above SHOULD
+      be expressible over the identity and messaging mechanisms already
+      in use for agents and workloads, rather than presupposing a single
+      new transport.
+
+   R10 (Execution-time human authorization):  It MUST be possible to
+      designate classes of actions as requiring, at execution time,
+      evidence of an authorization decision made by an accountable human
+      approver distinct from the executing agent.  The designation MUST
+      be carried within the delegated authority itself, and derivation
+      MUST be able to tighten but never remove it.  The evidence MUST be
+      bound to the specific action, including its arguments, its target
+      resource, and the on-behalf-of principal; MUST be verifiable by
+      the relying party at the moment of enforcement from conveyed or
+      locally cached material, without a synchronous dependency on the
+      originating organization or on an approval-orchestration service;
+      and MUST be relied upon at most once.  A relying party that does
+
+
+
+Reece                    Expires 31 January 2027                [Page 8]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+      not recognize a designation MUST treat the designated action as
+      unauthorized.  This requirement deliberately does not select among
+      challenge-based, evidence-carrying, or other approaches to
+      satisfying it.
+
+6.  Non-Goals
+
+   This document does not address the correctness of an agent's internal
+   reasoning.  Mechanisms that constrain delegated authority bound what
+   an agent is permitted to do; they do not prevent an agent from
+   misusing authority it legitimately holds, for example as a result of
+   prompt injection.  Defense against such misuse is complementary and
+   out of scope here.
+
+   This document does not address confidentiality of agent payloads
+   beyond what is implied by ordinary transport security, nor does it
+   address denial-of-service resistance except where a design choice in
+   a future solution would create an asymmetric amplification.
+
+   This document does not select among credential formats, signature
+   schemes, or policy languages, and does not endorse any specific
+   product or implementation.
+
+7.  Security Considerations
+
+   This document is a problem statement; its security considerations are
+   the security properties that a future solution must provide, which
+   are stated as requirements in Section 5 (notably R1, R4, R5, R7, and
+   R10) and as problem facets in Section 3.
+
+   Several tensions deserve explicit attention by any solution.  The
+   avoidance of a runtime callback (R3) is in tension with timely
+   revocation (R7); a solution must make the staleness of offline
+   revocation state explicit and must fail safe.  The reliance on a
+   relying party's local trust material for cross-organizational
+   verification (R2) makes the integrity of that trust material, and of
+   the means by which it is resolved and cached, a high-value target; a
+   solution must ensure that the trust root used to verify a remote
+   organization's authority cannot be silently substituted.  The binding
+   of an on-behalf-of principal (R5) is only meaningful if the binding
+   is integrity-protected end to end, including against modification by
+   the intermediary agents that form the delegation chain.
+
+   Requirement R10 introduces considerations of its own.  An execution-
+   time approval is only as meaningful as the fidelity of what the
+   approver was shown: a solution must ensure that the action presented
+   for approval and the action bound into the evidence are the same
+   action, and that no party, including the executing agent itself, can
+
+
+
+Reece                    Expires 31 January 2027                [Page 9]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   alter one relative to the other.  The at-most-once reliance property
+   becomes a distributed-consumption problem when a relying party is
+   replicated, and its failure mode must be refusal rather than double
+   reliance.  Fail-closed treatment of unrecognized designations is what
+   preserves the requirement across verifiers of differing capability; a
+   fail-open interpretation would convert the newest designation into
+   the weakest link.  Finally, R3 and R10 compose deliberately: the
+   human's decision may be obtained through any interactive means, but
+   verification of its evidence at the point of enforcement inherits
+   R3's offline discipline.
+
+   Where authority is long-lived, or where audit records must remain
+   verifiable over a multi-year retention period, the long-term
+   resistance of the chosen cryptographic mechanisms, including under a
+   future quantum-capable adversary, is a consideration for any
+   solution; data and signatures recorded today may need to remain
+   unforgeable for the lifetime of the audit obligation.
+
+8.  IANA Considerations
+
+   This document has no IANA actions.
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+9.2.  Informative References
+
+   [RFC8693]  Jones, M., Nadalin, A., Campbell, B., Ed., Bradley, J.,
+              and C. Mortimore, "OAuth 2.0 Token Exchange", RFC 8693,
+              DOI 10.17487/RFC8693, January 2020,
+              <https://www.rfc-editor.org/info/rfc8693>.
+
+
+
+
+
+
+
+
+
+
+Reece                    Expires 31 January 2027               [Page 10]
+
+Internet-Draft         Cross-Org Agent Delegation              July 2026
+
+
+   [WIMSE-ARCH]
+              Salowey, J. A., Rosomakho, Y., and H. Tschofenig,
+              "Workload Identity in a Multi System Environment (WIMSE)
+              Architecture", Work in Progress, Internet-Draft, draft-
+              ietf-wimse-arch-08, 6 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-wimse-
+              arch-08>.
+
+Appendix A.  Changes Since -00
+
+   *  Added Section 3.7, describing the execution-time human-
+      authorization facet of the problem.
+
+   *  Added requirement R10 (execution-time human authorization) to
+      Section 5, stated mechanism-independently.
+
+   *  Added security considerations for R10 to Section 7, and included
+      R10 in the list of security-relevant requirements.
+
+   *  Completed the [WIMSE-ARCH] informative reference (authors, exact
+      title, draft name, version, and URL).
+
+   *  Updated the facet count in Section 3 and the Table of Contents;
+      corrected an expiry-date inconsistency in the -00 boilerplate;
+      editorial fixes.
+
+Author's Address
+
+   Morgan Reece
+   TowerGuardian Consulting
+   Austin, TX
+   United States of America
+   Email: morganLR@proton.me
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Reece                    Expires 31 January 2027               [Page 11]
