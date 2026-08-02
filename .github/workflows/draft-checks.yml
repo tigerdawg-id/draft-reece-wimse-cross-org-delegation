@@ -61,7 +61,7 @@ jobs:
             ${{ env.DRAFT }}.html
 
   publish:                 # main-only; NOT a required check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PUBLISH_PAGES == 'true'
     needs: draft-checks
     runs-on: ubuntu-latest
     permissions:
