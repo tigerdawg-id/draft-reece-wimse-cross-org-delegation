@@ -111,3 +111,14 @@ jobs:
           </ul>
           <p class="note">Discussion belongs on the
           <a href="https://mailman3.ietf.org/mailman3/lists/wimse@ietf.org">WIMSE
+          mailing list</a>; issues and pull requests in the repository
+          are IETF Contributions per the Note Well.</p>
+          </body></html>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
