@@ -46,7 +46,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Render (schema validation)
-        run: xml2rfc --text --html "${DRAFT}.xml"
+        run: xml2rfc --allow-local-file-access --text --html "${DRAFT}.xml"
 
       - name: Rendered-text sanity
         run: |
@@ -82,7 +82,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Render for publication
-        run: xml2rfc --text --html "${DRAFT}.xml"
+        run: xml2rfc --allow-local-file-access --text --html "${DRAFT}.xml"
 
       - name: Assemble site
         run: |
