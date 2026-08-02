@@ -12,14 +12,13 @@ env:
   DRAFT: draft-reece-wimse-cross-org-delegation-02   # bump per revision
 
 jobs:
-  draft-checks:            # <- this name is what branch protection pins
+  draft-checks:            # required status check; unchanged
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Consent-gate and placeholder hygiene
         run: |
-          # Nothing merges while carrying an unresolved gate marker.
           ! grep -nE 'PENDING|TODO|XXX|CREDIT' "${DRAFT}.xml" \
             || { echo "::error::Gate marker present in XML"; exit 1; }
 
@@ -37,12 +36,11 @@ jobs:
         with: { python-version: '3.12', cache: 'pip' }
       - run: pip install xml2rfc
 
-      - name: Render (this is the schema validation)
+      - name: Render (schema validation)
         run: xml2rfc --text --html "${DRAFT}.xml"
 
       - name: Rendered-text sanity
         run: |
-          # every internal xref resolved, no [ERR] markers, ToC intact
           ! grep -nE 'ERR|Unresolved' "${DRAFT}.txt" || exit 1
           grep -q "Table of Contents" "${DRAFT}.txt"
 
@@ -52,3 +50,59 @@ jobs:
           path: |
             ${{ env.DRAFT }}.txt
             ${{ env.DRAFT }}.html
+
+  publish:                 # main-only; NOT a required check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: draft-checks
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: 'pip' }
+      - run: pip install xml2rfc
+      - name: Render for publication
+        run: xml2rfc --text --html "${DRAFT}.xml"
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp "${DRAFT}.html" "${DRAFT}.txt" _site/
+          # stable aliases so external links survive revision bumps
+          cp "${DRAFT}.html" _site/current.html
+          cp "${DRAFT}.txt"  _site/current.txt
+          cat > _site/index.html << EOF
+          <!DOCTYPE html><html><head><meta charset="utf-8">
+          <title>draft-reece-wimse-cross-org-delegation (editor's copy)</title>
+          <style>body{font-family:sans-serif;max-width:42em;margin:3em auto;
+          line-height:1.5;color:#1a2233}h1{font-size:1.3em}
+          .note{color:#5a6478;font-size:0.9em}</style></head><body>
+          <h1>Requirements for Cross-Organization Delegation of
+          Authority to AI Agents</h1>
+          <p class="note">Editor's working copy, rendered from
+          <a href="https://github.com/${GITHUB_REPOSITORY}">the source
+          repository</a> at commit ${GITHUB_SHA:0:7}. The authoritative
+          published revisions live in the
+          <a href="https://datatracker.ietf.org/doc/draft-reece-wimse-cross-org-delegation/">IETF
+          Datatracker</a>. An IPR disclosure with royalty-free terms is
+          on file; see the repository README.</p>
+          <ul>
+            <li><a href="current.html">Working draft (HTML)</a></li>
+            <li><a href="current.txt">Working draft (text)</a></li>
+          </ul>
+          <p class="note">Discussion belongs on the
+          <a href="https://mailman3.ietf.org/mailman3/lists/wimse@ietf.org">WIMSE
+          mailing list</a>; issues and pull requests in the repository
+          are IETF Contributions per the Note Well.</p>
+          </body></html>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: _site }
+      - id: deploy
+        uses: actions/deploy-pages@v4
