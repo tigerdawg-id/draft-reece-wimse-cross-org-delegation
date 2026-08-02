@@ -514,19 +514,9 @@
       <references>
         <name>Informative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8693.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.draft-ietf-wimse-arch-08.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-wimse-arch.xml"/>
       </references>
     </references>
-
-    <section anchor="acks" numbered="false">
-      <name>Acknowledgments</name>
-      <t>The author thanks Iman Schrock (EMILIA Protocol) for an
-      implementation-grounded review of the -01 execution-time
-      human-authorization requirement, whose clarifications shaped the
-      R10 refinements and the corresponding security considerations in this
-      revision, for the first-contact continuity-amortization note, and for
-      contributing the EMILIA implementation report.</t>
-    </section>
 
     <section anchor="changes01">
       <name>Changes Since -01</name>
@@ -573,12 +563,22 @@
         <li>Added security considerations for R10 to
         <xref target="security"/>, and included R10 in the list of
         security-relevant requirements.</li>
-        <li>Completed the <xref target="I-D.draft-ietf-wimse-arch-08"/> informative reference
+        <li>Completed the <xref target="I-D.ietf-wimse-arch"/> informative reference
         (authors, exact title, draft name, version, and URL).</li>
         <li>Updated the facet count in <xref target="problem"/> and the
         Table of Contents; corrected an expiry-date inconsistency in the
         -00 boilerplate; editorial fixes.</li>
       </ul>
+    </section>
+
+    <section anchor="acks" numbered="false">
+      <name>Acknowledgments</name>
+      <t>The author thanks Iman Schrock (EMILIA Protocol) for an
+      implementation-grounded review of the -01 execution-time
+      human-authorization requirement, whose clarifications shaped the
+      R10 refinements and the corresponding security considerations in this
+      revision, for the first-contact continuity-amortization note, and for
+      contributing the EMILIA implementation report.</t>
     </section>
 
   </back>
