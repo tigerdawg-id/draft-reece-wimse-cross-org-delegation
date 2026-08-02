@@ -1,0 +1,17 @@
+<reference anchor="I-D.ietf-wimse-arch" target="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-08">
+  <front>
+    <title>Workload Identity in a Multi System Environment (WIMSE) Architecture</title>
+    <author initials="J. A." surname="Salowey" fullname="Joseph A. Salowey">
+      <organization/>
+    </author>
+    <author initials="Y." surname="Rosomakho" fullname="Yaroslav Rosomakho">
+      <organization/>
+    </author>
+    <author initials="H." surname="Tschofenig" fullname="Hannes Tschofenig">
+      <organization/>
+    </author>
+    <date day="6" month="July" year="2026"/>
+  </front>
+  <seriesInfo name="Internet-Draft" value="draft-ietf-wimse-arch-08"/>
+  <refcontent>Work in Progress</refcontent>
+</reference>
