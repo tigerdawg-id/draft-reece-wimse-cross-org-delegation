@@ -12,10 +12,15 @@ env:
   DRAFT: draft-reece-wimse-cross-org-delegation-02   # bump per revision
 
 jobs:
-  draft-checks:            # required status check; unchanged
+  draft-checks:            # required status check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Source file present
+        run: |
+          test -f "${DRAFT}.xml" \
+            || { echo "::error::${DRAFT}.xml not found at repo root; update the DRAFT env var or commit the file."; exit 1; }
 
       - name: Consent-gate and placeholder hygiene
         run: |
@@ -33,8 +38,12 @@ jobs:
             || { echo "::error::em dash present"; exit 1; }
 
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12', cache: 'pip' }
-      - run: pip install xml2rfc
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install toolchain
+        run: pip install -r requirements.txt
 
       - name: Render (schema validation)
         run: xml2rfc --text --html "${DRAFT}.xml"
@@ -62,10 +71,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12', cache: 'pip' }
-      - run: pip install xml2rfc
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install toolchain
+        run: pip install -r requirements.txt
+
       - name: Render for publication
         run: xml2rfc --text --html "${DRAFT}.xml"
 
@@ -73,7 +88,6 @@ jobs:
         run: |
           mkdir -p _site
           cp "${DRAFT}.html" "${DRAFT}.txt" _site/
-          # stable aliases so external links survive revision bumps
           cp "${DRAFT}.html" _site/current.html
           cp "${DRAFT}.txt"  _site/current.txt
           cat > _site/index.html << EOF
@@ -97,12 +111,3 @@ jobs:
           </ul>
           <p class="note">Discussion belongs on the
           <a href="https://mailman3.ietf.org/mailman3/lists/wimse@ietf.org">WIMSE
-          mailing list</a>; issues and pull requests in the repository
-          are IETF Contributions per the Note Well.</p>
-          </body></html>
-          EOF
-
-      - uses: actions/upload-pages-artifact@v3
-        with: { path: _site }
-      - id: deploy
-        uses: actions/deploy-pages@v4
