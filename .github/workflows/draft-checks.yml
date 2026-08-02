@@ -1,0 +1,54 @@
+name: draft-checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DRAFT: draft-reece-wimse-cross-org-delegation-02   # bump per revision
+
+jobs:
+  draft-checks:            # <- this name is what branch protection pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Consent-gate and placeholder hygiene
+        run: |
+          # Nothing merges while carrying an unresolved gate marker.
+          ! grep -nE 'PENDING|TODO|XXX|CREDIT' "${DRAFT}.xml" \
+            || { echo "::error::Gate marker present in XML"; exit 1; }
+
+      - name: docName matches filename
+        run: |
+          grep -q "docName=\"${DRAFT}\"" "${DRAFT}.xml" \
+            || { echo "::error::docName attribute != filename"; exit 1; }
+
+      - name: Em-dash and encoding hygiene
+        run: |
+          ! grep -nP '\x{2014}' "${DRAFT}.xml" \
+            || { echo "::error::em dash present"; exit 1; }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: 'pip' }
+      - run: pip install xml2rfc
+
+      - name: Render (this is the schema validation)
+        run: xml2rfc --text --html "${DRAFT}.xml"
+
+      - name: Rendered-text sanity
+        run: |
+          # every internal xref resolved, no [ERR] markers, ToC intact
+          ! grep -nE 'ERR|Unresolved' "${DRAFT}.txt" || exit 1
+          grep -q "Table of Contents" "${DRAFT}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rendered-${{ github.sha }}
+          path: |
+            ${{ env.DRAFT }}.txt
+            ${{ env.DRAFT }}.html
