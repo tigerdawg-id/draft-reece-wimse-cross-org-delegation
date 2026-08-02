@@ -1,0 +1,23 @@
+<reference anchor="RFC8693" target="https://www.rfc-editor.org/info/rfc8693">
+  <front>
+    <title>OAuth 2.0 Token Exchange</title>
+    <author initials="M.B." surname="Jones" fullname="Michael B. Jones">
+      <organization/>
+    </author>
+    <author initials="A." surname="Nadalin" fullname="Anthony Nadalin">
+      <organization/>
+    </author>
+    <author initials="B." surname="Campbell" fullname="Brian Campbell" role="editor">
+      <organization/>
+    </author>
+    <author initials="J." surname="Bradley" fullname="John Bradley">
+      <organization/>
+    </author>
+    <author initials="C." surname="Mortimore" fullname="Chuck Mortimore">
+      <organization/>
+    </author>
+    <date year="2020" month="January"/>
+  </front>
+  <seriesInfo name="RFC" value="8693"/>
+  <seriesInfo name="DOI" value="10.17487/RFC8693"/>
+</reference>
