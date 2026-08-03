@@ -383,6 +383,30 @@
       from misusing authority it legitimately holds, for example as a result
       of prompt injection.  Defense against such misuse is complementary and
       out of scope here.</t>
+      <t>A second, distinct non-claim concerns authority the mechanism
+      never conveyed.  These requirements concern what a relying party can
+      conclude from conveyed authority.  They assume that, for the
+      governed classes of action, the conveyed authority is the only
+      authority path available to the acting agent.  Where the execution
+      environment also grants the agent ambient authority (the
+      principal's own credentials, cached sessions, or other paths to the
+      same resources), satisfying R1 through R10 establishes the validity
+      and scope of what was presented; it does not establish that the
+      principal's delegation governed the action.  Three cases are
+      therefore distinct: correct use through the delegated path, misuse
+      within the conveyed scope, and action through another path
+      altogether ("conveyed delegation bypassed by ambient authority").
+      The requirements bear on the first two and are silent on the third.
+      The assumption is load-bearing for R10 in particular: where an
+      agent executes as the principal, with the principal's own
+      credentials, no artifact can establish that the approver was
+      distinct from the executing agent.  Making conveyed authority the
+      sole path is an environment and architecture concern, on the
+      execution side (an agent runtime holding no ambient credentials)
+      and on the resource side (declining ambient-credential access for
+      agent-originated requests, which presupposes distinguishing
+      agent-originated from principal-originated action), and is out of
+      scope for this document.</t>
       <t>This document does not address confidentiality of agent payloads
       beyond what is implied by ordinary transport security, nor does it
       address denial-of-service resistance except where a design choice in a
@@ -443,7 +467,11 @@
       designation into the weakest link.  Finally, R3 and R10 compose
       deliberately: the human's decision may be obtained through any
       interactive means, but verification of its evidence at the point of
-      enforcement inherits R3's offline discipline.</t>
+      enforcement inherits R3's offline discipline.  These considerations,
+      like R10 itself, operate under the sole-authority assumption stated
+      in <xref target="nongoals"/>: where the executing agent also holds
+      ambient authority, verification establishes what was presented, not
+      what governed the action.</t>
       <t>A solution <bcp14>SHOULD</bcp14> keep the evaluation of
       human-authorization evidence, its validity and policy sufficiency,
       separate from the atomic admission or consumption of the designated
@@ -538,6 +566,11 @@
         <li>Bounded the display-fidelity claim: commitment binding proves
         what was committed to, not what the human perceived or
         understood.</li>
+        <li>Added the sole-authority assumption and the ambient-bypass
+        non-claim to the Non-Goals section, with a cross-reference from
+        the R10 security considerations (raised by Barak Shelef on the
+        WIMSE list; the "conveyed delegation bypassed by ambient
+        authority" framing due to Songbo, August 2026).</li>
         <li>Added a first-contact residual and continuity-amortization
         note to the security considerations (R2): the residual is paid once
         at first contact and carried across key rotation by a hash-chained
@@ -578,7 +611,10 @@
       human-authorization requirement, whose clarifications shaped the
       R10 refinements and the corresponding security considerations in this
       revision, for the first-contact continuity-amortization note, and for
-      contributing the EMILIA implementation report.</t>
+      contributing the EMILIA implementation report.  Thanks also to
+      Barak Shelef and to Songbo for the ambient-authority bypass review
+      on the WIMSE list, which produced the sole-authority assumption in
+      the Non-Goals section.</t>
     </section>
 
   </back>
