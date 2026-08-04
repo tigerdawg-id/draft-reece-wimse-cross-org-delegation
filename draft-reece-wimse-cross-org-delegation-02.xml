@@ -165,6 +165,22 @@
         federation relationship do not generalize to the open,
         many-to-many case in which agents from numerous organizations
         interact without having been federated in advance.</t>
+        <t>Two sub-problems are usefully distinguished within this
+        boundary, because they admit very different treatment.  The first
+        is acquisition: how a relying party obtains candidate trust
+        material for a previously unknown organization at all.  The
+        second is binding: whether the acquired material genuinely
+        represents the real-world organization it claims to represent.
+        Acquisition is fully addressable by mechanism: trust material can
+        be made resolvable through generally available infrastructure
+        that either party joins independently, so that nothing specific
+        to the interaction needs to exist in advance.  Binding is not:
+        some initial act ties an anchor to a real-world entity, and no
+        acquisition channel eliminates that act; <xref target="security"/>
+        states this residual, its grading to consequence, and its
+        amortization across repeated interaction.  The requirements in
+        this document, R2 in particular, demand the first property while
+        bounding, not discharging, the second.</t>
       </section>
 
       <section anchor="callback">
@@ -308,7 +324,11 @@
         <dd>A relying party in one organization <bcp14>MUST</bcp14> be able
         to verify authority that originated under another organization's
         trust anchor without a pre-existing bilateral agreement specific to
-        the interaction.</dd>
+        the interaction.  This requirement concerns the acquisition of
+        verification material and the verification computation; the
+        binding of an anchor to the real-world organization it represents
+        is bounded by it, not eliminated (see
+        <xref target="boundary"/> and <xref target="security"/>).</dd>
         <dt>R3 (No runtime callback):</dt>
         <dd>The mechanism <bcp14>MUST</bcp14> permit a relying party to
         reach an authorization decision without a synchronous call to the
@@ -395,7 +415,8 @@
       principal's delegation governed the action.  Three cases are
       therefore distinct: correct use through the delegated path, misuse
       within the conveyed scope, and action through another path
-      altogether ("conveyed delegation bypassed by ambient authority").
+      altogether ("conveyed delegation bypassed by ambient authority"
+      <xref target="I-D.bu-agentproto-security-principal-binding"/>).
       The requirements bear on the first two and are silent on the third.
       The assumption is load-bearing for R10 in particular: where an
       agent executes as the principal, with the principal's own
@@ -471,7 +492,14 @@
       like R10 itself, operate under the sole-authority assumption stated
       in <xref target="nongoals"/>: where the executing agent also holds
       ambient authority, verification establishes what was presented, not
-      what governed the action.</t>
+      what governed the action.  Conformance and test artifacts should
+      preserve this boundary in their verdict vocabulary: an
+      artifact-level result asserts that the presented delegation
+      verified, never that the delegation governed the action, and a
+      verifier that cannot observe or exclude alternative authority paths
+      should report an indeterminate rather than a passing result for the
+      stronger claim
+      <xref target="I-D.bu-agentproto-security-principal-binding"/>.</t>
       <t>A solution <bcp14>SHOULD</bcp14> keep the evaluation of
       human-authorization evidence, its validity and policy sufficiency,
       separate from the atomic admission or consumption of the designated
@@ -543,12 +571,23 @@
         <name>Informative References</name>
         <xi:include href="bib/reference.RFC.8693.xml"/>
         <xi:include href="bib/reference.I-D.ietf-wimse-arch.xml"/>
+        <xi:include href="bib/reference.I-D.bu-agentproto-security-principal-binding.xml"/>
       </references>
     </references>
 
     <section anchor="changes01">
       <name>Changes Since -01</name>
       <ul spacing="normal">
+        <li>Added the acquisition-versus-binding distinction to
+        Section 3.2, with a clarifying note in R2; together with the
+        first-contact residual and continuity-amortization note in the
+        security considerations, this completes the R2 items identified
+        in the July review (WIMSE list, 3 August 2026).</li>
+        <li>The R10 refinements, the two-attempt-record replay
+        description, and the continuity-amortization note in this
+        revision originate in implementation review by Iman Schrock
+        (EMILIA Protocol), placed in the public record on the WIMSE
+        mailing list (31 July and 3 August 2026).</li>
         <li>Sharpened R10's at-most-once clause: valid, policy-satisfying
         evidence creates no second admission after its reliance unit is
         consumed.</li>
@@ -570,7 +609,8 @@
         non-claim to the Non-Goals section, with a cross-reference from
         the R10 security considerations (raised by Barak Shelef on the
         WIMSE list; the "conveyed delegation bypassed by ambient
-        authority" framing due to Songbo, August 2026).</li>
+        authority" framing due to Songbo Bu, whose negative-test guidance
+        is now cited, August 2026).</li>
         <li>Added a first-contact residual and continuity-amortization
         note to the security considerations (R2): the residual is paid once
         at first contact and carried across key rotation by a hash-chained
@@ -612,7 +652,7 @@
       R10 refinements and the corresponding security considerations in this
       revision, for the first-contact continuity-amortization note, and for
       contributing the EMILIA implementation report.  Thanks also to
-      Barak Shelef and to Songbo for the ambient-authority bypass review
+      Barak Shelef and to Songbo Bu for the ambient-authority bypass review
       on the WIMSE list, which produced the sole-authority assumption in
       the Non-Goals section.</t>
     </section>
