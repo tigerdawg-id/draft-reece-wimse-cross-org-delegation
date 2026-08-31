@@ -24,7 +24,7 @@
         <email>morganLR@proton.me</email>
       </address>
     </author>
-    <date year="2026" month="August"/>
+    <date year="2026" month="August" day="31"/>
     <workgroup>WIMSE Working Group</workgroup>
 
     <abstract>
@@ -284,7 +284,7 @@
       small, fixed delegation depth and a relying party that can reach the
       authorization server.  Their extension to recursive agent delegation
       across organizations is not native.</t>
-      <t>Token exchange mechanisms can express that one party acts on behalf
+      <t>Token exchange mechanisms <xref target="RFC8693"/> can express that one party acts on behalf
       of or is impersonating another, but they do not provide a verifiable
       model of recursive attenuation across an arbitrary number of hops, nor
       a guarantee, checkable by an arbitrary relying party, that the
@@ -612,15 +612,15 @@
       <name>References</name>
       <references>
         <name>Normative References</name>
-        <xi:include href="bib/reference.RFC.2119.xml"/>
-        <xi:include href="bib/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
       </references>
       <references>
         <name>Informative References</name>
-        <xi:include href="bib/reference.RFC.8693.xml"/>
-        <xi:include href="bib/reference.I-D.ietf-wimse-arch.xml"/>
-        <xi:include href="bib/reference.I-D.bu-agentproto-security-principal-binding.xml"/>
-        <xi:include href="bib/reference.I-D.thallapelly-oasnt-caid.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8693.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-wimse-arch.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.bu-agentproto-security-principal-binding.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.thallapelly-oasnt-caid.xml"/>
       </references>
     </references>
 
