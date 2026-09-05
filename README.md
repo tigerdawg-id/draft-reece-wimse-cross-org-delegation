@@ -14,7 +14,7 @@ Author: Morgan Reece (list handle `morganLR`), TowerGuardian Consulting.
 
 - `-01` (July 2026): added Section 3.7 and requirement R10
   (execution-time human authorization).
-- `-02` (in progress in this repository): R10 hardening from
+- `-02` (August 2026): R10 hardening from
   implementation review; first-contact residual and continuity
   amortization; implementation status section. See the
   [open issues](../../issues) for the work items.
