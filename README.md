@@ -16,7 +16,9 @@ Author: Morgan Reece (list handle `morganLR`), TowerGuardian Consulting.
   (execution-time human authorization).
 - `-02` (August 2026): R10 hardening from
   implementation review; first-contact residual and continuity
-  amortization; implementation status section. See the
+  amortization; implementation status section.
+- `-03` (In progress in repository)
+- See the
   [open issues](../../issues) for the work items.
 
 ## Contributing
