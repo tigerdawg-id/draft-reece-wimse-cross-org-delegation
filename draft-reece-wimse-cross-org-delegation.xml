@@ -1,0 +1,726 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     category="info"
+     docName="draft-reece-wimse-cross-org-delegation-02"
+     ipr="trust200902"
+     submissionType="IETF"
+     tocInclude="true"
+     sortRefs="true"
+     symRefs="true"
+     xml:lang="en"
+     version="3">
+
+  <front>
+    <title abbrev="Cross-Org Agent Delegation">Cross-Organizational Delegation for Workload and Agent Identity: Problem Statement and Requirements</title>
+    <seriesInfo name="Internet-Draft" value="draft-reece-wimse-cross-org-delegation-02"/>
+    <author fullname="Morgan Reece" initials="M." surname="Reece">
+      <organization>TowerGuardian Consulting</organization>
+      <address>
+        <postal>
+          <city>Austin</city>
+          <region>TX</region>
+          <country>United States of America</country>
+        </postal>
+        <email>morganLR@proton.me</email>
+      </address>
+    </author>
+    <date year="2026" month="August" day="31"/>
+    <workgroup>WIMSE Working Group</workgroup>
+
+    <abstract>
+      <t>Autonomous software agents increasingly act on behalf of human
+      principals by invoking tools, services, and other agents, frequently
+      across organizational boundaries.  Existing workload and token-based
+      authorization mechanisms were designed for a single trust domain and
+      a small number of delegation hops.  They do not adequately express,
+      constrain, or verify authority that is delegated recursively among
+      agents and that crosses the boundary between independently
+      administered organizations.  This document describes the problem of
+      cross-organizational agent delegation, identifies the gaps in current
+      mechanisms, and enumerates requirements that any solution within the
+      scope of the Workload Identity in Multi-System Environments (WIMSE)
+      working group should satisfy.  It does not specify a solution.</t>
+    </abstract>
+
+    <note removeInRFC="true">
+      <name>Note to the RFC Editor and Working Group</name>
+      <t>Informative references to agent-to-agent and tool-invocation
+      protocols, to workload identity credential formats, and to
+      status-list-based revocation will be added in a subsequent revision;
+      they are omitted here to keep the problem statement
+      mechanism-neutral.</t>
+    </note>
+  </front>
+
+  <middle>
+
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Software agents that incorporate large language models or other
+      autonomous decision logic are increasingly deployed to perform tasks
+      on behalf of human principals.  A common pattern is for an
+      orchestrating agent to decompose a task and delegate sub-tasks to
+      specialized sub-agents, each of which may invoke tools or further
+      sub-agents.  These tool and agent invocations are frequently mediated
+      by protocols such as the Model Context Protocol and agent-to-agent
+      messaging, and they increasingly cross the boundary between
+      independently administered organizations: an agent operated by one
+      organization invokes a tool or agent operated by another.</t>
+      <t>The Workload Identity in Multi-System Environments (WIMSE) working
+      group is chartered to address identity for workloads that operate
+      across multiple systems and trust domains.  Autonomous agents are a
+      workload class whose delegation behavior stresses existing identity
+      and authorization mechanisms in ways that this document seeks to make
+      explicit.</t>
+      <t>The authorization question raised at each agent action is not a
+      single question but a composition of several: which workload is
+      acting; what authority it holds; from whom that authority was
+      delegated and through how many intermediaries; on behalf of which
+      human principal it ultimately acts; and whether a relying party in a
+      different organization can answer all of the foregoing without
+      contacting the originating organization at the moment of the call.</t>
+      <t>Existing mechanisms answer some of these questions within a single
+      trust domain.  This document argues that none answers all of them
+      across organizational boundaries, and that the gap is significant
+      enough to warrant work within the WIMSE working group.</t>
+      <t>This document is a problem statement and requirements document.  It
+      deliberately does not propose or endorse any specific mechanism,
+      credential format, or token construction.</t>
+    </section>
+
+    <section anchor="terminology">
+      <name>Terminology</name>
+      <t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>",
+      "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>", "<bcp14>SHALL
+      NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>",
+      "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>",
+      "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>" in this document
+      are to be interpreted as described in BCP 14 <xref target="RFC2119"/>
+      <xref target="RFC8174"/> when, and only when, they appear in all
+      capitals, as shown here.</t>
+      <t>This document uses the following terms.</t>
+      <dl newline="false" spacing="normal">
+        <dt>Agent:</dt>
+        <dd>A software workload that performs tasks autonomously,
+        potentially invoking tools, services, or other agents.  An agent
+        is a workload in the sense of the WIMSE architecture.</dd>
+        <dt>Tool:</dt>
+        <dd>A function, API, or service that an agent may invoke to take
+        an action or retrieve information.</dd>
+        <dt>Principal:</dt>
+        <dd>The human (or other ultimately-accountable entity) on whose
+        behalf an agent acts.</dd>
+        <dt>Delegation:</dt>
+        <dd>The act of conferring a subset of one entity's authority upon
+        another entity.</dd>
+        <dt>Delegation chain:</dt>
+        <dd>An ordered sequence of delegations originating at a principal
+        or an originating agent and proceeding through zero or more
+        intermediary agents to the agent that performs an action.</dd>
+        <dt>Attenuation:</dt>
+        <dd>The narrowing of authority at a delegation step, such that the
+        authority conferred is no greater than the authority held.</dd>
+        <dt>Originating organization:</dt>
+        <dd>The organization whose trust anchor issued the identity or
+        authority at the root of a delegation chain.</dd>
+        <dt>Relying party:</dt>
+        <dd>The entity that receives an agent's request and must decide
+        whether to honor it; in cross-organizational cases the relying
+        party belongs to a different organization than the originating
+        organization.</dd>
+      </dl>
+    </section>
+
+    <section anchor="problem">
+      <name>Problem Statement</name>
+      <t>This section describes seven facets of the cross-organizational
+      agent delegation problem.  They are interrelated; a solution that
+      addresses only a subset leaves exploitable or operationally
+      untenable gaps.</t>
+
+      <section anchor="recursive">
+        <name>Recursive Delegation Among Agents</name>
+        <t>An orchestrating agent commonly delegates a narrowed slice of its
+        authority to a sub-agent, which may delegate a further narrowed slice
+        to another sub-agent, and so on.  Each step <bcp14>SHOULD</bcp14>
+        only be able to narrow authority, never to widen it.  Existing
+        bearer-token mechanisms typically express a fixed set of scopes
+        granted at issue time and provide no native, verifiable model in
+        which authority is recursively attenuated across multiple hops while
+        remaining verifiable end-to-end.  Where multi-hop delegation is
+        expressed at all, the constraint that a later hop cannot exceed an
+        earlier hop is frequently enforced only by the issuing party's
+        policy rather than being verifiable by an arbitrary relying party
+        from the conveyed authority alone.</t>
+      </section>
+
+      <section anchor="boundary">
+        <name>Crossing the Organizational Boundary</name>
+        <t>When an agent in organization A invokes a tool or agent in
+        organization B, organization B's relying party must evaluate
+        authority that was issued under organization A's trust anchor.  In
+        the general case there is no pre-existing bilateral agreement between
+        A and B specific to this interaction.  Mechanisms that assume a
+        shared identity provider, a shared policy store, or a pre-provisioned
+        federation relationship do not generalize to the open,
+        many-to-many case in which agents from numerous organizations
+        interact without having been federated in advance.</t>
+        <t>Two sub-problems are usefully distinguished within this
+        boundary, because they admit very different treatment.  The first
+        is acquisition: how a relying party obtains candidate trust
+        material for a previously unknown organization at all.  The
+        second is binding: whether the acquired material genuinely
+        represents the real-world organization it claims to represent.
+        Acquisition is fully addressable by mechanism: trust material can
+        be made resolvable through generally available infrastructure
+        that either party joins independently, so that nothing specific
+        to the interaction needs to exist in advance.  Binding is not:
+        some initial act ties an anchor to a real-world entity, and no
+        acquisition channel eliminates that act; <xref target="security"/>
+        states this residual, its grading to consequence, and its
+        amortization across repeated interaction.  The requirements in
+        this document, R2 in particular, demand the first property while
+        bounding, not discharging, the second.</t>
+      </section>
+
+      <section anchor="callback">
+        <name>Verification Without a Runtime Callback</name>
+        <t>Agent tool invocations can occur at high frequency and with
+        stringent latency budgets.  Requiring the relying party to call back
+        to the originating organization's infrastructure at the moment of
+        each invocation -- to introspect a token, resolve a session, or
+        confirm authority -- introduces latency, a runtime availability
+        dependency on a third party, and a privacy exposure (the originating
+        organization learns each time and where its agent's authority is
+        exercised).  A relying party <bcp14>SHOULD</bcp14> be able to reach
+        a correct authorization decision from the conveyed authority,
+        locally cached trust material, and locally cached revocation state,
+        without a synchronous call to the originating organization on the
+        critical path.</t>
+      </section>
+
+      <section anchor="obo">
+        <name>Binding the On-Behalf-Of Principal</name>
+        <t>An agent typically acts on behalf of a human principal.  Two
+        distinct authorization questions arise at each action and are
+        independent of one another: whether the agent is permitted to
+        perform the class of action at all, and whether the human principal
+        on whose behalf it acts is entitled to the specific resource the
+        action targets.  An authorization model that captures only the first
+        question permits a "confused deputy", in which an agent authorized
+        for a class of action is induced to apply it to a resource belonging
+        to some principal other than the one it acts for.  A model that
+        resolves the second question by having the agent inherit the
+        principal's full set of permissions produces an over-privileged
+        deputy, in which compromise of the agent escalates to the full
+        authority of the human.  Across a multi-hop, cross-organizational
+        delegation chain, the identity of the on-behalf-of principal must be
+        conveyed and constrained in a manner that a remote relying party can
+        evaluate, and that intermediary agents cannot silently alter.</t>
+      </section>
+
+      <section anchor="revocation">
+        <name>Revocation and Freshness Across Domains</name>
+        <t>Authority conferred on an agent must be revocable, and revocation
+        must reach relying parties in other organizations.  Because the
+        verification path <bcp14>SHOULD</bcp14> avoid a synchronous callback
+        (<xref target="callback"/>), revocation state must be conveyable to
+        relying parties out of band and checkable locally, while remaining
+        authentic (a revoked authority cannot be made to appear valid) and
+        bounded in staleness (a relying party can reason about, and fail
+        safe on, the age of its revocation information).  Reconciling
+        offline verification with timely cross-domain revocation is a
+        central tension.</t>
+      </section>
+
+      <section anchor="audit">
+        <name>Composable Cross-Domain Audit</name>
+        <t>After the fact -- for incident response, compliance, or dispute
+        resolution -- it must be possible to reconstruct who authorized a
+        given action, through which intermediaries, and on behalf of which
+        principal, even though the relevant events were recorded by
+        different organizations.  No single organization observes the entire
+        delegation chain in a cross-organizational interaction.  The records
+        held by each participant must be composable into a coherent
+        end-to-end account, and each participant's record must be resistant
+        to undetectable alteration.</t>
+      </section>
+
+      <section anchor="humanauthz">
+        <name>Execution-Time Human Authorization</name>
+        <t>Some classes of action are consequential enough that an
+        organization's policy requires a human decision at the moment of
+        execution, regardless of what standing authority the acting agent
+        otherwise holds: releasing a payment above a threshold, deleting or
+        exporting a data set, modifying a safety boundary, or triggering a
+        physical action in the world.  Within a single trust domain this is
+        commonly implemented as step-up authentication or an approval
+        workflow anchored at a shared authorization server.  Across a
+        multi-hop, cross-organizational delegation chain, three properties
+        become difficult to obtain at once: that the requirement itself
+        survives delegation, so that no intermediary can shed it; that the
+        human's decision is bound to the specific action being taken, rather
+        than to a session or to a class of actions; and that the relying
+        party which enforces the requirement, possibly offline and in
+        another organization, can verify the decision's evidence at the
+        moment of enforcement.</t>
+        <t>Public discussion has converged on this pattern from several
+        directions, including grant-time consent records and challenge-based
+        transaction-authorization proposals in the OAuth community,
+        "user-mediated escalation" in agent-authorization use-case work, and
+        "physical-world action authorization" requirements for embodied
+        agents.  These proposals differ in mechanism; they share the
+        underlying need this facet states.</t>
+      </section>
+    </section>
+
+    <section anchor="gaps">
+      <name>Gaps in Existing Mechanisms</name>
+      <t>The following observations motivate work in this area.  They are
+      stated at the level of mechanism classes rather than specific
+      documents, to avoid mischaracterizing any individual specification.</t>
+      <t>Session-oriented authorization frameworks excel at granting a
+      client scoped access within a trust domain but generally assume a
+      small, fixed delegation depth and a relying party that can reach the
+      authorization server.  Their extension to recursive agent delegation
+      across organizations is not native.</t>
+      <t>Token exchange mechanisms <xref target="RFC8693"/> can express that one party acts on behalf
+      of or is impersonating another, but they do not provide a verifiable
+      model of recursive attenuation across an arbitrary number of hops, nor
+      a guarantee, checkable by an arbitrary relying party, that the
+      on-behalf-of principal is invariant along the chain.</t>
+      <t>Workload identity mechanisms establish strong identity for
+      workloads and increasingly span multiple systems, which is precisely
+      the WIMSE remit; the open question this document raises is how
+      delegated, attenuated, principal-bound authority is conveyed and
+      verified when the workloads in question are agents that delegate to
+      one another across organizational boundaries.</t>
+      <t>Mechanisms that rely on a shared policy decision point evaluate
+      rich policy at runtime but reintroduce a runtime dependency and a
+      single administrative domain, which is the dependency
+      <xref target="callback"/> seeks to avoid in the cross-organizational
+      case.</t>
+      <t>The cumulative gap is that no widely deployed mechanism today lets
+      a relying party in one organization verify, locally and without a
+      callback, a recursively attenuated, principal-bound delegation chain
+      that originated in another organization, while supporting cross-domain
+      revocation and composable audit.</t>
+    </section>
+
+    <section anchor="requirements">
+      <name>Requirements</name>
+      <t>Any solution within scope <bcp14>SHOULD</bcp14> satisfy the
+      following requirements.  They are derived directly from the problem
+      facets in <xref target="problem"/> and are stated independently of any
+      particular credential format or cryptographic construction.</t>
+      <dl newline="false" spacing="normal">
+        <dt>R1 (Recursive attenuation):</dt>
+        <dd>The mechanism <bcp14>MUST</bcp14> allow authority to be
+        delegated through multiple hops such that each hop conveys a subset
+        of the authority of the preceding hop, and <bcp14>MUST</bcp14> allow
+        a relying party to verify, from the conveyed authority alone, that
+        no hop exceeds its predecessor.</dd>
+        <dt>R2 (Cross-organizational verification):</dt>
+        <dd>A relying party in one organization <bcp14>MUST</bcp14> be able
+        to verify authority that originated under another organization's
+        trust anchor without a pre-existing bilateral agreement specific to
+        the interaction.  This requirement concerns the acquisition of
+        verification material and the verification computation; the
+        binding of an anchor to the real-world organization it represents
+        is bounded by it, not eliminated (see
+        <xref target="boundary"/> and <xref target="security"/>).</dd>
+        <dt>R3 (No runtime callback):</dt>
+        <dd>The mechanism <bcp14>MUST</bcp14> permit a relying party to
+        reach an authorization decision without a synchronous call to the
+        originating organization on the critical path, using conveyed
+        authority and locally cached trust and revocation material.</dd>
+        <dt>R4 (Proof of possession):</dt>
+        <dd>The mechanism <bcp14>MUST</bcp14> allow a relying party to
+        confirm that the presenting party controls the key to which the
+        conveyed authority is bound, so that a captured or relayed
+        credential is not usable by another party.</dd>
+        <dt>R5 (Principal binding and invariance):</dt>
+        <dd>The mechanism <bcp14>MUST</bcp14> be able to convey the
+        on-behalf-of principal along the delegation chain and
+        <bcp14>MUST</bcp14> allow a relying party to verify that
+        intermediary agents have not altered the identity of that
+        principal.</dd>
+        <dt>R6 (Dual-axis authorization):</dt>
+        <dd>The mechanism <bcp14>MUST</bcp14> support authorization
+        decisions that depend both on the agent's conveyed authority and on
+        the entitlements of the bound principal, such that an action is
+        permitted only when both admit it.</dd>
+        <dt>R7 (Authentic, bounded-staleness revocation):</dt>
+        <dd>The mechanism <bcp14>MUST</bcp14> support revocation whose
+        authenticity is verifiable offline and whose staleness is bounded,
+        so that a relying party can fail safe when its revocation
+        information is older than a configured bound.</dd>
+        <dt>R8 (Tamper-evident, composable audit):</dt>
+        <dd>The mechanism <bcp14>SHOULD</bcp14> enable each participant to
+        record its portion of a delegation in a manner resistant to
+        undetectable alteration, and <bcp14>SHOULD</bcp14> enable those
+        records to be composed into an end-to-end account of an action's
+        provenance.</dd>
+        <dt>R9 (Format and transport agnosticism):</dt>
+        <dd>The requirements above <bcp14>SHOULD</bcp14> be expressible over
+        the identity and messaging mechanisms already in use for agents and
+        workloads, rather than presupposing a single new transport.</dd>
+        <dt>R10 (Execution-time human authorization):</dt>
+        <dd>It <bcp14>MUST</bcp14> be possible to designate classes of
+        actions as requiring, at execution time, evidence of an
+        authorization decision made by an accountable human approver
+        distinct from the executing agent.  The designation
+        <bcp14>MUST</bcp14> be carried within the delegated authority
+        itself, and derivation <bcp14>MUST</bcp14> be able to tighten but
+        never remove it.  The evidence <bcp14>MUST</bcp14> be bound to the
+        specific action, including its arguments, its target resource, and
+        the on-behalf-of principal; <bcp14>MUST</bcp14> be verifiable by the
+        relying party at the moment of enforcement from conveyed or locally
+        cached material, without a synchronous dependency on the originating
+        organization or on an approval-orchestration service; and
+        <bcp14>MUST</bcp14> be relied upon at most once.  Evidence that
+        remains cryptographically valid and policy-satisfying
+        <bcp14>MUST NOT</bcp14> give rise to a second admission of the
+        designated action after its reliance unit has been consumed.
+        Consumption of the reliance unit occurs only upon admission:
+        evaluation, exact-action matching, and refusal at any stage
+        <bcp14>MUST NOT</bcp14> consume it, and where an implementation
+        reserves the unit before effect, every refusal
+        <bcp14>MUST</bcp14> release the reservation.
+        Where the authorization evidence and the designated action use
+        different representations, the exact-action binding
+        <bcp14>MUST</bcp14> be defined by a declared canonicalization or
+        mapping profile, and a missing, incomplete, or ambiguous mapping
+        <bcp14>MUST</bcp14> be treated as a failed verification rather
+        than as an ordinary semantic mismatch.  A relying party
+        that does not recognize a designation <bcp14>MUST</bcp14> treat the
+        designated action as unauthorized.  This requirement deliberately
+        does not select among challenge-based, evidence-carrying, or other
+        approaches to satisfying it.</dd>
+      </dl>
+    </section>
+
+    <section anchor="nongoals">
+      <name>Non-Goals</name>
+      <t>This document does not address the correctness of an agent's
+      internal reasoning.  Mechanisms that constrain delegated authority
+      bound what an agent is permitted to do; they do not prevent an agent
+      from misusing authority it legitimately holds, for example as a result
+      of prompt injection.  Defense against such misuse is complementary and
+      out of scope here.</t>
+      <t>A second, distinct non-claim concerns authority the mechanism
+      never conveyed.  These requirements concern what a relying party can
+      conclude from conveyed authority.  They assume that, for the
+      governed classes of action, the conveyed authority is the only
+      authority path available to the acting agent.  Where the execution
+      environment also grants the agent ambient authority (the
+      principal's own credentials, cached sessions, or other paths to the
+      same resources), satisfying R1 through R10 establishes the validity
+      and scope of what was presented; it does not establish that the
+      principal's delegation governed the action.  Three cases are
+      therefore distinct: correct use through the delegated path, misuse
+      within the conveyed scope, and action through another path
+      altogether ("conveyed delegation bypassed by ambient authority"
+      <xref target="I-D.bu-agentproto-security-principal-binding"/>).
+      The requirements bear on the first two and are silent on the third.
+      The assumption is load-bearing for R10 in particular: where an
+      agent executes as the principal, with the principal's own
+      credentials, no artifact can establish that the approver was
+      distinct from the executing agent.  Making conveyed authority the
+      sole path is an environment and architecture concern, on the
+      execution side (an agent runtime holding no ambient credentials)
+      and on the resource side (declining ambient-credential access for
+      agent-originated requests, which presupposes distinguishing
+      agent-originated from principal-originated action), and is out of
+      scope for this document.</t>
+      <t>This document does not address confidentiality of agent payloads
+      beyond what is implied by ordinary transport security, nor does it
+      address denial-of-service resistance except where a design choice in a
+      future solution would create an asymmetric amplification.</t>
+      <t>This document does not select among credential formats, signature
+      schemes, or policy languages, and does not endorse any specific
+      product or implementation.</t>
+    </section>
+
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>This document is a problem statement; its security considerations
+      are the security properties that a future solution must provide, which
+      are stated as requirements in <xref target="requirements"/> (notably
+      R1, R4, R5, R7, and R10) and as problem facets in
+      <xref target="problem"/>.</t>
+      <t>Several tensions deserve explicit attention by any solution.  The
+      avoidance of a runtime callback (R3) is in tension with timely
+      revocation (R7); a solution must make the staleness of offline
+      revocation state explicit and must fail safe.  The reliance on a
+      relying party's local trust material for cross-organizational
+      verification (R2) makes the integrity of that trust material, and of
+      the means by which it is resolved and cached, a high-value target; a
+      solution must ensure that the trust root used to verify a remote
+      organization's authority cannot be silently substituted.  The binding
+      of an on-behalf-of principal (R5) is only meaningful if the binding is
+      integrity-protected end to end, including against modification by the
+      intermediary agents that form the delegation chain.</t>
+      <t>Cross-organizational verification without an interaction-specific
+      prior arrangement (R2) carries an irreducible first-contact residual:
+      the initial binding of a previously unknown organization's trust
+      anchor to the real-world organization it claims to be.  Generally
+      available infrastructure narrows that residual, and reliance on it
+      can be graded to the consequence of the action, but no mechanism
+      removes it.  Its cost is, however, bounded by continuity: once the
+      first-contact binding is taken, a hash-chained authority history and
+      continuity signatures carry the binding across key rotation with no
+      new leap of trust and no new bilateral arrangement.  The prior
+      arrangement is paid once, at first contact, rather than re-paid per
+      interaction, so a repeated relationship sits lower on the trust
+      gradient than a reading of R2 as tending toward a prior relationship
+      would suggest: the residual is amortized to a single pin, not
+      renewed.</t>
+      <t>Requirement R10 introduces considerations of its own.  An
+      execution-time approval is only as meaningful as the fidelity of what
+      the approver was shown: a solution must ensure that the action
+      presented for approval and the action bound into the evidence are the
+      same action, and that no party, including the executing agent itself,
+      can alter one relative to the other.  Such commitment binding proves
+      what presentation was committed to; it does not by itself prove what
+      the human perceived or understood, and a solution's claims should be
+      bounded accordingly.  Those two poles are not adjacent: whether the
+      committed presentation was in fact rendered to a display is a
+      separate property, about delivery rather than perception, that an
+      implementation <bcp14>MAY</bcp14> establish, and a verifier that
+      establishes only commitment cannot distinguish a presented
+      disclosure from an unrendered one.  This document leaves that
+      middle property open rather than settling it by omission.  The
+      at-most-once reliance
+      property becomes a distributed-consumption problem when a relying
+      party is replicated, and its failure mode must be refusal rather than
+      double reliance.  Fail-closed treatment of unrecognized designations
+      is what preserves the requirement across verifiers of differing
+      capability; a fail-open interpretation would convert the newest
+      designation into the weakest link.  Finally, R3 and R10 compose
+      deliberately: the human's decision may be obtained through any
+      interactive means, but verification of its evidence at the point of
+      enforcement inherits R3's offline discipline.  These considerations,
+      like R10 itself, operate under the sole-authority assumption stated
+      in <xref target="nongoals"/>: where the executing agent also holds
+      ambient authority, verification establishes what was presented, not
+      what governed the action.  Conformance and test artifacts should
+      preserve this boundary in their verdict vocabulary: an
+      artifact-level result asserts that the presented delegation
+      verified, never that the delegation governed the action, and a
+      verifier that cannot observe or exclude alternative authority paths
+      should report an indeterminate rather than a passing result for the
+      stronger claim
+      <xref target="I-D.bu-agentproto-security-principal-binding"/>.</t>
+      <t>A solution <bcp14>SHOULD</bcp14> keep the evaluation of
+      human-authorization evidence, its validity and policy sufficiency,
+      separate from the atomic admission or consumption of the designated
+      action, and <bcp14>SHOULD</bcp14> record the authorization decision
+      and the admission result separately, including an already-consumed
+      refusal reason; this composes with R8.  The distinction matters
+      because a replayed presentation can carry evidence that remains
+      authentic, exact-action-bound, and policy-satisfying.  The honest
+      record of such a replay is two attempt records: the first attempt is
+      authorized and admitted; the second presents the same still-valid
+      authorization and is nevertheless refused as already consumed, and
+      the refused attempt has no outcome.  The converse failure also
+      occurs in practice and is why consumption is constrained to
+      admission: an implementation that consumes the reliance unit
+      during evaluation and later refuses (on an exact-action mismatch,
+      for example) destroys a valid human approval without performing
+      any action.  That converts every refusal path into a denial vector
+      against approver attention, and where approvals are staged ahead
+      of disconnected operation, it can burn an approval that cannot be
+      re-obtained at the moment it is needed.  Where the refusal can be
+      induced by the presenter, by offering a near miss to the designated
+      action, approvals can be burned at will: a denial of service aimed
+      at the approving human rather than at the service, and one that
+      appears in records as correct fail-closed behavior.  A published example of
+      this defect and its correction, including the rule that a refusal
+      must not consume, appears in
+      <xref target="I-D.thallapelly-oasnt-caid"/>.  Stating the
+      constraint as a property over outcomes rather than a step order
+      constrains every correct ordering without prescribing one.</t>
+      <t>The phrase "verifiable ... from conveyed or locally cached
+      material" in R10 is not to be read as "a signature is present."
+      Offline verification presupposes locally selected or cached trust
+      anchors, the binding of the evidence to its authorization and
+      enrollment context, a revocation or status view, and a freshness
+      policy scaled to the consequence class of the action; where these
+      inputs are absent, or staler than the configured bound for the
+      consequence class, enforcement refuses (see R3 and R7).</t>
+      <t>At-most-once admission bounds authorization; it does not resolve
+      an indeterminate post-dispatch outcome.  Where the effect of an
+      admitted action may already have occurred, a solution reconciles the
+      original attempt and <bcp14>MUST NOT</bcp14> treat the same
+      authorization evidence as permission for a blind retry.</t>
+      <t>Where authority is long-lived, or where audit records must remain
+      verifiable over a multi-year retention period, the long-term
+      resistance of the chosen cryptographic mechanisms, including under a
+      future quantum-capable adversary, is a consideration for any solution;
+      data and signatures recorded today may need to remain unforgeable for
+      the lifetime of the audit obligation.</t>
+    </section>
+
+    <section anchor="implstatus">
+      <name>Implementation Status</name>
+      <t>[Note to the RFC Editor: please remove this section before
+      publication, per the practice described in RFC 7942.]</t>
+      <t>This section records the status of known implementations of the
+      requirements in this document at the time of posting, based on
+      reports by the implementers.</t>
+      <t>EMILIA Protocol (reported by Iman Schrock, July 2026): EMILIA's
+      current implementation exercises the separate-human-role,
+      exact-action and acting-for binding, offline-verification-input,
+      fail-closed-role, and atomic one-time-admission portions of R10.  It
+      remains conditional/partial on carrying the human-authorization
+      designation monotonically through the WIMSE/OAuth delegation chain,
+      because the current host-format mapping does not yet carry that
+      designation.</t>
+      <t>OASNT (reported by Arun Thallapelly on the WIMSE mailing list,
+      August 2026): exact-action binding met via three digests (the action
+      and its arguments, the exact bytes displayed to the approver, and a
+      fingerprint binding the token to one concrete request), with
+      cross-pointing of an approved token to another action recorded as a
+      measured refusal.  Offline verifiability met with the preconditions
+      applied: enrollment refuses outright when attestation material
+      cannot be obtained, staleness is policy-bounded, and absence of
+      evidence is the weakest state, never an intermediate one.
+      Fail-closed designation met, including a deployment-time variant in
+      which a route declaring no assurance floor is refused at startup.
+      At-most-once admission met in the implementation, and in the
+      published profile as of draft-thallapelly-oasnt-caid-01.  In-chain
+      designation carriage NOT MET and not currently attempted: the
+      designation lives in relying-party route policy rather than
+      traveling in delegated authority.  Two independent implementations
+      of different architectures stopping at the same clause suggests the
+      gap lies in what current host formats can express rather than in
+      either implementation.</t>
+      <t>The author maintains an implementation exercising all ten
+      requirements; details are deferred to mechanism-track documents.</t>
+    </section>
+
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+
+  </middle>
+
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8693.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-wimse-arch.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.bu-agentproto-security-principal-binding.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.thallapelly-oasnt-caid.xml"/>
+      </references>
+    </references>
+
+    <section anchor="changes01">
+      <name>Changes Since -01</name>
+      <ul spacing="normal">
+        <li>Added the acquisition-versus-binding distinction to
+        Section 3.2, with a clarifying note in R2; together with the
+        first-contact residual and continuity-amortization note in the
+        security considerations, this completes the R2 items identified
+        in the July review.</li>
+        <li>The R10 refinements, the two-attempt-record replay
+        description, and the continuity-amortization note in this
+        revision originate in implementation review by Iman Schrock
+        (EMILIA Protocol), contributed with attribution by
+        agreement.</li>
+        <li>Sharpened R10's at-most-once clause: valid, policy-satisfying
+        evidence creates no second admission after its reliance unit is
+        consumed; and consumption occurs only upon admission, with
+        refusals at any stage never consuming and reservations released
+        on refusal (the approval-destruction failure shape is described
+        in the security considerations, with a published example
+        cited).</li>
+        <li>Added to R10 a requirement for a declared canonicalization or
+        mapping profile where evidence and action representations differ,
+        with missing or ambiguous mappings treated as failed
+        verification.</li>
+        <li>Expanded the R10 security considerations: separation and
+        separate recording of evidence evaluation versus atomic admission;
+        the input preconditions of offline verification (trust anchors,
+        enrollment binding, status view, consequence-scaled freshness); and
+        the distinction between at-most-once admission and indeterminate
+        post-dispatch outcomes, including the prohibition on blind
+        retry.</li>
+        <li>Bounded the display-fidelity claim: commitment binding proves
+        what was committed to, not what the human perceived or
+        understood.</li>
+        <li>Added an OASNT implementation-status entry (reported on the
+        WIMSE list by Arun Thallapelly), recording the second independent
+        grade against R10 and the convergence result: two architectures
+        stopping at the in-chain-carriage clause.</li>
+        <li>Extended the approval-destruction discussion: presenter-induced
+        near-miss refusals as a denial vector against the approving human
+        that records as correct fail-closed behavior.</li>
+        <li>Refined the display-fidelity bound to three levels: commitment
+        provable, rendering separately establishable, perception out of
+        reach.</li>
+        <li>Added the sole-authority assumption and the ambient-bypass
+        non-claim to the Non-Goals section, with a cross-reference from
+        the R10 security considerations (raised by Barak Shelef on the
+        WIMSE list; the "conveyed delegation bypassed by ambient
+        authority" framing due to Songbo Bu, whose negative-test guidance
+        is now cited, August 2026).</li>
+        <li>Added a first-contact residual and continuity-amortization
+        note to the security considerations (R2): the residual is paid once
+        at first contact and carried across key rotation by a hash-chained
+        authority history and continuity signatures, not renewed per
+        interaction (contributed by Iman Schrock).</li>
+        <li>Added an Implementation Status section (per the RFC 7942
+        practice) recording the EMILIA implementation report against R10,
+        contributed by Iman Schrock, and noting the author's
+        implementation.</li>
+        <li>Sharpened the replay description in the security
+        considerations to the two-attempt-record form.</li>
+        <li>Added Acknowledgments.</li>
+      </ul>
+    </section>
+
+    <section anchor="changes">
+      <name>Changes Since -00</name>
+      <ul spacing="normal">
+        <li>Added <xref target="humanauthz"/>, describing the execution-time
+        human-authorization facet of the problem.</li>
+        <li>Added requirement R10 (execution-time human authorization) to
+        <xref target="requirements"/>, stated mechanism-independently.</li>
+        <li>Added security considerations for R10 to
+        <xref target="security"/>, and included R10 in the list of
+        security-relevant requirements.</li>
+        <li>Completed the <xref target="I-D.ietf-wimse-arch"/> informative reference
+        (authors, exact title, draft name, version, and URL).</li>
+        <li>Updated the facet count in <xref target="problem"/> and the
+        Table of Contents; corrected an expiry-date inconsistency in the
+        -00 boilerplate; editorial fixes.</li>
+      </ul>
+    </section>
+
+    <section anchor="acks" numbered="false">
+      <name>Acknowledgments</name>
+      <t>The author thanks Iman Schrock (EMILIA Protocol) for an
+      implementation-grounded review of the -01 execution-time
+      human-authorization requirement, whose clarifications shaped the
+      R10 refinements and the corresponding security considerations in this
+      revision, for the first-contact continuity-amortization note, and for
+      contributing the EMILIA implementation report.  Thanks also to
+      Barak Shelef and to Songbo Bu for the ambient-authority bypass review
+      on the WIMSE list, which produced the sole-authority assumption in
+      the Non-Goals section, and to Arun Thallapelly (OmniArx) for the
+      published consumption example, the OASNT implementation report, and
+      the display-fidelity refinement.</t>
+    </section>
+
+  </back>
+</rfc>
