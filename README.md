@@ -6,7 +6,7 @@ group](https://datatracker.ietf.org/wg/wimse/about/).
 
 **Current revision:**
 [datatracker](https://datatracker.ietf.org/doc/draft-reece-wimse-cross-org-delegation/)
-· [latest text](https://www.ietf.org/archive/id/draft-reece-wimse-cross-org-delegation-01.txt)
+· [latest text](https://www.ietf.org/archive/id/draft-reece-wimse-cross-org-delegation-02.txt)
 
 Author: Morgan Reece (list handle `morganLR`), TowerGuardian Consulting.
 
